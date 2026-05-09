@@ -1,8 +1,8 @@
 {
   "name": "dot_matrix_watchface",
-  "author": "MakeAwesomeHappen",
-  "version": "1.0.0",
-  "keywords": ["pebble-app"],
+  "author": "rohittavare",
+  "version": "0.1.0",
+  "keywords": ["pebble-app", "watchface", "dot-matrix"],
   "private": true,
   "dependencies": {},
   "pebble": {
@@ -20,7 +20,7 @@
       "gabbro"
     ],
     "watchapp": {
-      "watchface": false
+      "watchface": true
     },
     "messageKeys": [
       "dummy"
