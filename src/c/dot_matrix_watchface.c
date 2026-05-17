@@ -1,5 +1,23 @@
 #include <pebble.h>
 
+// structs
+
+struct DotSetting {
+  int r1;
+  int r2;
+  int shape;
+  GColor color;
+};
+
+struct WatchFaceSetting {
+  int grid_spacing;
+  GColor background;
+  struct DotSetting numerals_setting;
+  bool one_line_display;
+  bool display_grid;
+  struct DotSetting grid_setting;
+};
+
 // constants
 const int CIRCLE = 0;
 const int SQUARE = 1;
@@ -29,22 +47,24 @@ const int NUMERALS_BITMASK[15] = {
   0b0000010110
 };
 
-const int GRID_SPACING = 15;
-
-const int GRID_R1 = 1;
-const int GRID_R2 = 0;
-const int GRID_SHAPE = CIRCLE;
-
-const int NUMERALS_R1 = 2;
-const int NUMERALS_R2 = 2;
-const int NUMERALS_SHAPE = LINE;
-
-const bool ONE_LINE_FORMAT = false;
-const bool SHOW_GRID = false;
-
-const GColor BACKGROUND_COLOR = GColorBlack;
-const GColor GRID_COLOR = GColorDarkGray;
-const GColor FOREGROUND_COLOR = GColorWhite;
+const struct WatchFaceSetting SETTINGS = {
+  .grid_spacing = 15,
+  .background = GColorBlack,
+  .display_grid = true,
+  .one_line_display = false,
+  .numerals_setting = {
+    .r1 = 3,
+    .r2 = 2,
+    .shape = LINE,
+    .color = GColorWhite
+  },
+  .grid_setting = {
+    .r1 = 3,
+    .r2 = 1,
+    .shape = PLUS,
+    .color = GColorDarkGray
+  }
+};
 
 // window
 Window *main_window;
@@ -81,12 +101,10 @@ void draw_dot(GContext *ctx, GPoint p, int r, int r2, GColor col, int shape) {
       graphics_fill_circle(ctx, p, r);
     }
   } else if (shape == PLUS) {
-    graphics_context_set_stroke_width(ctx, r2);
-    graphics_draw_line(ctx, GPoint(p.x-r,p.y), GPoint(p.x+r,p.y));
-    graphics_draw_line(ctx, GPoint(p.x,p.y-r), GPoint(p.x,p.y+r));
+    graphics_fill_rect(ctx, GRect(p.x-r+1, p.y-(r2-1)/2, r*2-1, r2), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(p.x-(r2-1)/2, p.y-r+1, r2, r*2-1), 0, GCornerNone);
   } else if (shape == LINE) {
-    graphics_context_set_stroke_width(ctx, r2);
-    graphics_draw_line(ctx, GPoint(p.x,p.y-r), GPoint(p.x,p.y+r));
+    graphics_fill_rect(ctx, GRect(p.x-(r2-1)/2, p.y-r+1, r2, r*2-1), 0, GCornerNone);
   }
 }
 
@@ -106,15 +124,15 @@ void draw_grid(Layer *layer, GContext *ctx, int r, int d) {
 
   for (int i = 0; i*d + center.x < layer_size.w + r; i++) {
     for (int j = 0; j*d + center.y < layer_size.h + r; j++) {
-      draw_dot(ctx, GPoint(center.x + d*i, center.y + d*j), r, GRID_R2, GRID_COLOR, GRID_SHAPE);
+      draw_dot(ctx, GPoint(center.x + d*i, center.y + d*j), r, SETTINGS.grid_setting.r2, SETTINGS.grid_setting.color, SETTINGS.grid_setting.shape);
       if (j)
-        draw_dot(ctx, GPoint(center.x + d*i, center.y - d*j), r, GRID_R2, GRID_COLOR, GRID_SHAPE);
+        draw_dot(ctx, GPoint(center.x + d*i, center.y - d*j), r, SETTINGS.grid_setting.r2, SETTINGS.grid_setting.color, SETTINGS.grid_setting.shape);
     }
     if (i) {
       for (int j = 0; j*d + center.y < layer_size.h + r; j++) {
-        draw_dot(ctx, GPoint(center.x - d*i, center.y + d*j), r, GRID_R2, GRID_COLOR, GRID_SHAPE);
+        draw_dot(ctx, GPoint(center.x - d*i, center.y + d*j), r, SETTINGS.grid_setting.r2, SETTINGS.grid_setting.color, SETTINGS.grid_setting.shape);
         if (j)
-          draw_dot(ctx, GPoint(center.x - d*i, center.y - d*j), r, GRID_R2, GRID_COLOR, GRID_SHAPE);
+          draw_dot(ctx, GPoint(center.x - d*i, center.y - d*j), r, SETTINGS.grid_setting.r2, SETTINGS.grid_setting.color, SETTINGS.grid_setting.shape);
       }
     }
   }
@@ -126,34 +144,34 @@ void draw_layer(Layer *layer, GContext *ctx) {
   GSize layer_size = layer_get_bounds(layer).size;
   GPoint center = GPoint(layer_size.w/2, layer_size.h/2);
   
-  if (SHOW_GRID)
-    draw_grid(layer, ctx, GRID_R1, GRID_SPACING);
-  if (ONE_LINE_FORMAT) {
-    draw_numeral(ctx, n1, GPoint(center.x - 8*GRID_SPACING, center.y - 2*GRID_SPACING), 5, 0, GRID_SPACING, BACKGROUND_COLOR, CIRCLE);
-    draw_numeral(ctx, n2, GPoint(center.x - 4*GRID_SPACING, center.y - 2*GRID_SPACING), 5, 0, GRID_SPACING, BACKGROUND_COLOR, CIRCLE);
-    draw_numeral(ctx, n3, GPoint(center.x + 2*GRID_SPACING, center.y - 2*GRID_SPACING), 5, 0, GRID_SPACING, BACKGROUND_COLOR, CIRCLE);
-    draw_numeral(ctx, n4, GPoint(center.x + 6*GRID_SPACING, center.y - 2*GRID_SPACING), 5, 0, GRID_SPACING, BACKGROUND_COLOR, CIRCLE);
+  if (SETTINGS.display_grid)
+    draw_grid(layer, ctx, SETTINGS.grid_setting.r1, SETTINGS.grid_spacing);
+  if (SETTINGS.one_line_display) {
+    draw_numeral(ctx, n1, GPoint(center.x - 8*SETTINGS.grid_spacing, center.y - 2*SETTINGS.grid_spacing), 5, 0, SETTINGS.grid_spacing, SETTINGS.background, CIRCLE);
+    draw_numeral(ctx, n2, GPoint(center.x - 4*SETTINGS.grid_spacing, center.y - 2*SETTINGS.grid_spacing), 5, 0, SETTINGS.grid_spacing, SETTINGS.background, CIRCLE);
+    draw_numeral(ctx, n3, GPoint(center.x + 2*SETTINGS.grid_spacing, center.y - 2*SETTINGS.grid_spacing), 5, 0, SETTINGS.grid_spacing, SETTINGS.background, CIRCLE);
+    draw_numeral(ctx, n4, GPoint(center.x + 6*SETTINGS.grid_spacing, center.y - 2*SETTINGS.grid_spacing), 5, 0, SETTINGS.grid_spacing, SETTINGS.background, CIRCLE);
 
-    draw_dot(ctx, GPoint(center.x, center.y - GRID_SPACING), 5, 0, BACKGROUND_COLOR, CIRCLE);
-    draw_dot(ctx, GPoint(center.x, center.y - GRID_SPACING), NUMERALS_R1, NUMERALS_R2, FOREGROUND_COLOR, CIRCLE);
+    draw_dot(ctx, GPoint(center.x, center.y - SETTINGS.grid_spacing), 5, 0, SETTINGS.background, CIRCLE);
+    draw_dot(ctx, GPoint(center.x, center.y - SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.numerals_setting.color, CIRCLE);
 
-    draw_dot(ctx, GPoint(center.x, center.y + GRID_SPACING), 5, 0, BACKGROUND_COLOR, CIRCLE);
-    draw_dot(ctx, GPoint(center.x, center.y + GRID_SPACING), NUMERALS_R1, NUMERALS_R2, FOREGROUND_COLOR, CIRCLE);
+    draw_dot(ctx, GPoint(center.x, center.y + SETTINGS.grid_spacing), 5, 0, SETTINGS.background, CIRCLE);
+    draw_dot(ctx, GPoint(center.x, center.y + SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.numerals_setting.color, CIRCLE);
 
-    draw_numeral(ctx, n1, GPoint(center.x - 8*GRID_SPACING, center.y - 2*GRID_SPACING), NUMERALS_R1, NUMERALS_R2, GRID_SPACING, FOREGROUND_COLOR, NUMERALS_SHAPE);
-    draw_numeral(ctx, n2, GPoint(center.x + 4*GRID_SPACING, center.y - 2*GRID_SPACING), NUMERALS_R1, NUMERALS_R2, GRID_SPACING, FOREGROUND_COLOR, NUMERALS_SHAPE);
-    draw_numeral(ctx, n3, GPoint(center.x - 2*GRID_SPACING, center.y - 2*GRID_SPACING), NUMERALS_R1, NUMERALS_R2, GRID_SPACING, FOREGROUND_COLOR, NUMERALS_SHAPE);
-    draw_numeral(ctx, n4, GPoint(center.x + 6*GRID_SPACING, center.y - 2*GRID_SPACING), NUMERALS_R1, NUMERALS_R2, GRID_SPACING, FOREGROUND_COLOR, NUMERALS_SHAPE);
+    draw_numeral(ctx, n1, GPoint(center.x - 8*SETTINGS.grid_spacing, center.y - 2*SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.grid_spacing, SETTINGS.numerals_setting.color, SETTINGS.numerals_setting.shape);
+    draw_numeral(ctx, n2, GPoint(center.x + 4*SETTINGS.grid_spacing, center.y - 2*SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.grid_spacing, SETTINGS.numerals_setting.color, SETTINGS.numerals_setting.shape);
+    draw_numeral(ctx, n3, GPoint(center.x - 2*SETTINGS.grid_spacing, center.y - 2*SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.grid_spacing, SETTINGS.numerals_setting.color, SETTINGS.numerals_setting.shape);
+    draw_numeral(ctx, n4, GPoint(center.x + 6*SETTINGS.grid_spacing, center.y - 2*SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.grid_spacing, SETTINGS.numerals_setting.color, SETTINGS.numerals_setting.shape);
   } else {
-    draw_numeral(ctx, n1, GPoint(center.x - 3*GRID_SPACING, center.y - 5*GRID_SPACING), 5, 0, GRID_SPACING, BACKGROUND_COLOR, CIRCLE);
-    draw_numeral(ctx, n2, GPoint(center.x + 1*GRID_SPACING, center.y - 5*GRID_SPACING), 5, 0, GRID_SPACING, BACKGROUND_COLOR, CIRCLE);
-    draw_numeral(ctx, n3, GPoint(center.x - 3*GRID_SPACING, center.y + 1*GRID_SPACING), 5, 0, GRID_SPACING, BACKGROUND_COLOR, CIRCLE);
-    draw_numeral(ctx, n4, GPoint(center.x + 1*GRID_SPACING, center.y + 1*GRID_SPACING), 5, 0, GRID_SPACING, BACKGROUND_COLOR, CIRCLE);
+    draw_numeral(ctx, n1, GPoint(center.x - 3*SETTINGS.grid_spacing, center.y - 5*SETTINGS.grid_spacing), 5, 0, SETTINGS.grid_spacing, SETTINGS.background, CIRCLE);
+    draw_numeral(ctx, n2, GPoint(center.x + 1*SETTINGS.grid_spacing, center.y - 5*SETTINGS.grid_spacing), 5, 0, SETTINGS.grid_spacing, SETTINGS.background, CIRCLE);
+    draw_numeral(ctx, n3, GPoint(center.x - 3*SETTINGS.grid_spacing, center.y + 1*SETTINGS.grid_spacing), 5, 0, SETTINGS.grid_spacing, SETTINGS.background, CIRCLE);
+    draw_numeral(ctx, n4, GPoint(center.x + 1*SETTINGS.grid_spacing, center.y + 1*SETTINGS.grid_spacing), 5, 0, SETTINGS.grid_spacing, SETTINGS.background, CIRCLE);
 
-    draw_numeral(ctx, n1, GPoint(center.x - 3*GRID_SPACING, center.y - 5*GRID_SPACING), NUMERALS_R1, NUMERALS_R2, GRID_SPACING, FOREGROUND_COLOR, NUMERALS_SHAPE);
-    draw_numeral(ctx, n2, GPoint(center.x + 1*GRID_SPACING, center.y - 5*GRID_SPACING), NUMERALS_R1, NUMERALS_R2, GRID_SPACING, FOREGROUND_COLOR, NUMERALS_SHAPE);
-    draw_numeral(ctx, n3, GPoint(center.x - 3*GRID_SPACING, center.y + 1*GRID_SPACING), NUMERALS_R1, NUMERALS_R2, GRID_SPACING, FOREGROUND_COLOR, NUMERALS_SHAPE);
-    draw_numeral(ctx, n4, GPoint(center.x + 1*GRID_SPACING, center.y + 1*GRID_SPACING), NUMERALS_R1, NUMERALS_R2, GRID_SPACING, FOREGROUND_COLOR, NUMERALS_SHAPE);
+    draw_numeral(ctx, n1, GPoint(center.x - 3*SETTINGS.grid_spacing, center.y - 5*SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.grid_spacing, SETTINGS.numerals_setting.color, SETTINGS.numerals_setting.shape);
+    draw_numeral(ctx, n2, GPoint(center.x + 1*SETTINGS.grid_spacing, center.y - 5*SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.grid_spacing, SETTINGS.numerals_setting.color, SETTINGS.numerals_setting.shape);
+    draw_numeral(ctx, n3, GPoint(center.x - 3*SETTINGS.grid_spacing, center.y + 1*SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.grid_spacing, SETTINGS.numerals_setting.color, SETTINGS.numerals_setting.shape);
+    draw_numeral(ctx, n4, GPoint(center.x + 1*SETTINGS.grid_spacing, center.y + 1*SETTINGS.grid_spacing), SETTINGS.numerals_setting.r1, SETTINGS.numerals_setting.r2, SETTINGS.grid_spacing, SETTINGS.numerals_setting.color, SETTINGS.numerals_setting.shape);
   }
 }
 
@@ -181,7 +199,7 @@ void window_unload(Window *window) {
 
 void init() {
   main_window = window_create();
-  window_set_background_color(main_window, GColorBlack);
+  window_set_background_color(main_window, SETTINGS.background);
 
   // set window load and unload handlers
   window_set_window_handlers(main_window, (WindowHandlers) {
