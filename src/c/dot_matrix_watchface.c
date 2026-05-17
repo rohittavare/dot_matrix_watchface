@@ -1,5 +1,11 @@
 #include <pebble.h>
 
+// constants
+int CIRCLE = 0;
+int SQUARE = 1;
+int PLUS = 2;
+int LINE = 3;
+
 // window
 Window *main_window;
 
@@ -8,31 +14,59 @@ Layer *dot_matrix_layer;
 
 // helpers
 
-void draw_dot(GContext *ctx, GPoint p, int r, GColor col) {
+void draw_dot(GContext *ctx, GPoint p, int r, int r2, GColor col, int shape) {
+  graphics_context_set_fill_color(ctx, col);
   graphics_context_set_stroke_color(ctx, col);
-  graphics_draw_circle(ctx, p, r);
+  if (shape == SQUARE) {
+    graphics_fill_rect(ctx, GRect(p.x-r+1, p.y-r+1, 2*r, 2*r), 0, GCornerNone);
+    if (r2) {
+      for (int i = r2; i <= r; i++) {
+        graphics_draw_rect(ctx, GRect(p.x-i+1, p.y-i+1, 2*i, 2*i));
+      }
+    } else {
+      graphics_fill_rect(ctx, GRect(p.x-r+1, p.y-r+1, 2*r, 2*r), 0, GCornerNone);
+    }
+  } else if (shape == CIRCLE) {
+    if (r2) {
+      for (int i = r2; i <= r; i++) {
+        graphics_draw_circle(ctx, p, i);
+      }
+    } else {
+      graphics_fill_circle(ctx, p, r);
+    }
+  } else if (shape == PLUS) {
+    graphics_context_set_stroke_width(ctx, r2);
+    graphics_draw_line(ctx, GPoint(p.x-r,p.y), GPoint(p.x+r,p.y));
+    graphics_draw_line(ctx, GPoint(p.x,p.y-r), GPoint(p.x,p.y+r));
+  } else if (shape == LINE) {
+    graphics_context_set_stroke_width(ctx, r2);
+    graphics_draw_line(ctx, GPoint(p.x,p.y-r), GPoint(p.x,p.y+r));
+  }
 }
 
-void draw_grid(Layer *layer, GContext *ctx, int r, int d, GPoint offset) {
-  GPoint true_offset = GPoint(
-    (offset.x > d - r) ? offset.x - d + r : offset.x,
-    (offset.y > d - r) ? offset.y - d + r : offset.y
-  );
-  GRect bounds = layer_get_bounds(layer);
-  GPoint iter_b = GPoint(
-    (bounds.size.w + r - true_offset.x)/d,
-    (bounds.size.h + r - true_offset.y)/d
-  );
-  for (int i = 0; i <= iter_b.x; i++) {
-    for (int j = 0; j <= iter_b.y; j++) {
-      draw_dot(ctx, GPoint(true_offset.x + d*i, true_offset.y + d*j), r, GColorDarkGray);
+void draw_grid(Layer *layer, GContext *ctx, int r, int d) {
+  GSize layer_size = layer_get_bounds(layer).size;
+  GPoint center = GPoint(layer_size.w/2, layer_size.h/2);
+
+  for (int i = 0; i*d + center.x < layer_size.w + r; i++) {
+    for (int j = 0; j*d + center.y < layer_size.h + r; j++) {
+      draw_dot(ctx, GPoint(center.x + d*i, center.y + d*j), r, 0, GColorDarkGray, SQUARE);
+      if (j)
+        draw_dot(ctx, GPoint(center.x + d*i, center.y - d*j), r, 0, GColorDarkGray, SQUARE);
+    }
+    if (i) {
+      for (int j = 0; j*d + center.y < layer_size.h + r; j++) {
+        draw_dot(ctx, GPoint(center.x - d*i, center.y + d*j), r, 0, GColorDarkGray, SQUARE);
+        if (j)
+          draw_dot(ctx, GPoint(center.x - d*i, center.y - d*j), r, 0, GColorDarkGray, SQUARE);
+      }
     }
   }
 }
 
 // layer draw functions
 void draw_layer(Layer *layer, GContext *ctx) {
-  draw_grid(layer, ctx, 3, 12, GPoint(0, 0));
+  draw_grid(layer, ctx, 1, 10);
 }
 
 // tick function
