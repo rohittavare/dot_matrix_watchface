@@ -51,7 +51,7 @@ const struct WatchFaceSetting SETTINGS = {
   .grid_spacing = 15,
   .background = GColorBlack,
   .display_grid = true,
-  .one_line_display = false,
+  .one_line_display = true,
   .numerals_setting = {
     .r1 = 3,
     .r2 = 2,
@@ -175,9 +175,23 @@ void draw_layer(Layer *layer, GContext *ctx) {
   }
 }
 
+void refresh_time() {
+  time_t t = time(NULL);
+  struct tm *lt = localtime(&t);
+
+  int h = (clock_is_24h_style()) ? lt->tm_hour : (lt->tm_hour % 12) ? lt->tm_hour % 12 : 12;
+  int m = lt->tm_min;
+
+  n1 = (h/10)%10;
+  n2 = h%10;
+  n3 = (m/10)%10;
+  n4 = m%10;
+}
+
 // tick function
 void tick(struct tm *tick_time, TimeUnits time_units) {
-
+  refresh_time();
+  layer_mark_dirty(dot_matrix_layer);
 }
 
 // window handlers
@@ -189,7 +203,10 @@ void window_load(Window *window) {
   dot_matrix_layer = layer_create(bounds);
   layer_set_update_proc(dot_matrix_layer, draw_layer);
 
-  layer_add_child(window_layer, dot_matrix_layer);  
+  layer_add_child(window_layer, dot_matrix_layer);
+
+  refresh_time();
+  layer_mark_dirty(dot_matrix_layer);
 }
 
 void window_unload(Window *window) {
