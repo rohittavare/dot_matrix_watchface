@@ -2,28 +2,36 @@
   "name": "dot_matrix_watchface",
   "author": "rohittavare",
   "version": "0.1.0",
-  "keywords": ["pebble-app", "watchface", "dot-matrix"],
+  "keywords": [
+    "pebble-app",
+    "watchface",
+    "dot-matrix"
+  ],
   "private": true,
-  "dependencies": {},
+  "dependencies": {
+    "@rebble/clay": "^1.0.10"
+  },
   "pebble": {
+    "capabilities": [
+      "configurable"
+    ],
     "displayName": "dot_matrix_watchface",
     "uuid": "52fefc5a-ea94-4f5f-8c9b-30d38c86599d",
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [
-      "aplite",
-      "basalt",
-      "chalk",
-      "diorite",
       "emery",
-      "flint",
-      "gabbro"
+      "gabbro",
+      "flint"
     ],
     "watchapp": {
       "watchface": true
     },
     "messageKeys": [
-      "dummy"
+      "ClockStyle",
+      "DisplayBackground",
+      "BackgroundStyle",
+      "NumeralsStyle"
     ],
     "resources": {
       "media": []

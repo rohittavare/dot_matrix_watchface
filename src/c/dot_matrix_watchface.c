@@ -1,70 +1,17 @@
 #include <pebble.h>
+#include "dot_matrix_watchface.h"
 
-// structs
-
-struct DotSetting {
-  int r1;
-  int r2;
-  int shape;
-  GColor color;
-};
-
-struct WatchFaceSetting {
-  int grid_spacing;
-  GColor background;
-  struct DotSetting numerals_setting;
-  bool one_line_display;
-  bool display_grid;
-  struct DotSetting grid_setting;
-};
-
-// constants
-const int CIRCLE = 0;
-const int SQUARE = 1;
-const int PLUS = 2;
-const int LINE = 3;
-
-const int NUMERALS_BITMASK[15] = {
-  // top row
-  0b0010111100,
-  0b1111101111,
-  0b0111110111,
-  // second row
-  0b1101110001,
-  0b0000000000,
-  0b1110011111,
-  // third row
-  0b1101100001,
-  0b1111111100,
-  0b1101010011,
-  // fourth row
-  0b0101000101,
-  0b0010000000,
-  0b1101111011,
-  // fifth row
-  0b1110101101,
-  0b1101101101,
-  0b0000010110
-};
-
-const struct WatchFaceSetting SETTINGS = {
-  .grid_spacing = 15,
-  .background = GColorBlack,
-  .display_grid = false,
-  .one_line_display = false,
+struct WatchFaceSetting SETTINGS = {
+  .background = GColorWhite,
   .numerals_setting = {
-    .r1 = 4,
-    .r2 = 3,
-    .shape = CIRCLE,
-    .color = GColorWhite
+    .color = GColorBlack
   },
   .grid_setting = {
-    .r1 = 3,
-    .r2 = 1,
-    .shape = PLUS,
-    .color = GColorDarkGray
+    .color = GColorLightGray
   }
 };
+
+static struct ClaySettings cly_settings;
 
 // window
 Window *main_window;
@@ -80,11 +27,143 @@ int n4 = 0;
 
 // helpers
 
+void clay_default_settings() {
+  cly_settings.DisplayBackground = true;
+  cly_settings.BackgroundStyle = PLUS;
+  cly_settings.ClockStyle = false;
+  cly_settings.NumeralsStyle = CIRCLE;
+}
+
+void clay_load_settings() {
+  clay_default_settings();
+  persist_read_data(SETTINGS_KEY, &cly_settings, sizeof(cly_settings));
+}
+
+void clay_save_settings() {
+  persist_write_data(SETTINGS_KEY, &cly_settings, sizeof(cly_settings));
+}
+
+void populate_watchface_settings_from_clay_settings() {
+  APP_LOG(
+    APP_LOG_LEVEL_INFO,
+    "CLAY SETTINGS DisplayBackground=%i BackgroundStyle=%i ClockStyle=%i NumeralsStyle=%i",
+    cly_settings.DisplayBackground,
+    cly_settings.BackgroundStyle,
+    cly_settings.ClockStyle,
+    cly_settings.NumeralsStyle
+  );
+  struct SettingsMapping current_device_settings_mapping;
+  struct ClockSettingMapping current_device_clock_settings_mapping;
+  struct GridSetting grid_setting;
+  struct DotSetting numerals_setting;
+
+  switch(PBL_PLATFORM_TYPE_CURRENT) {
+    case PlatformTypeFlint:
+      current_device_settings_mapping = FLINT_SETTINGS_MAPPING;
+      break;
+    case PlatformTypeEmery:
+      current_device_settings_mapping = EMERY_SETTINGS_MAPPING;
+      break;
+    case PlatformTypeGabbro:
+      current_device_settings_mapping = GABBRO_SETTINGS_MAPPING;
+      break;
+    default:
+      current_device_settings_mapping = FLINT_SETTINGS_MAPPING;
+      break;
+  }
+
+  if (cly_settings.ClockStyle) {
+    current_device_clock_settings_mapping = current_device_settings_mapping.inline_clock;
+  } else {
+    current_device_clock_settings_mapping = current_device_settings_mapping.noninline_clock;
+  }
+
+  switch(cly_settings.BackgroundStyle) {
+    case PLUS:
+      grid_setting = current_device_clock_settings_mapping.plus_grid;
+      break;
+    case DOT:
+    default:
+      grid_setting = current_device_clock_settings_mapping.dots_grid;
+      break;
+  }
+
+  switch(cly_settings.NumeralsStyle) {
+    case CIRCLE:
+      numerals_setting = current_device_clock_settings_mapping.circle;
+      break;
+    case CIRCLE_OUTLINE:
+      numerals_setting = current_device_clock_settings_mapping.circle_outline;
+      break;
+    case SQUARE:
+      numerals_setting = current_device_clock_settings_mapping.square;
+      break;
+    case SQUARE_OUTLINE:
+      numerals_setting = current_device_clock_settings_mapping.square_outline;
+      break;
+    case LINE:
+      numerals_setting = current_device_clock_settings_mapping.line;
+      break;
+    case DOT:
+    default:
+      numerals_setting = current_device_clock_settings_mapping.dot;
+      break;
+  }
+  
+  if (cly_settings.DisplayBackground) {
+    SETTINGS.display_grid = true;
+  }
+  
+  SETTINGS.grid_spacing = current_device_clock_settings_mapping.grid_spacing;
+  
+  SETTINGS.grid_interval = grid_setting.interval;
+  SETTINGS.grid_setting.r1 = grid_setting.dots.r1;
+  SETTINGS.grid_setting.r2 = grid_setting.dots.r2;
+  SETTINGS.grid_setting.shape = grid_setting.dots.shape;
+  
+  SETTINGS.numerals_setting.r1 = numerals_setting.r1;
+  SETTINGS.numerals_setting.r2 = numerals_setting.r2;
+  SETTINGS.numerals_setting.shape = numerals_setting.shape;
+
+  APP_LOG(
+    APP_LOG_LEVEL_INFO,
+    "WATCHFACE SETTINGS background=%i foreground=%i grid_spacing=%i inline=%i",
+    SETTINGS.background,
+    SETTINGS.numerals_setting.color,
+    SETTINGS.grid_spacing,
+    SETTINGS.one_line_display
+  );
+}
+
+void inbox_recieve_callback(DictionaryIterator *itr, void *ctx) {
+  Tuple *background_style = dict_find(itr, MESSAGE_KEY_BackgroundStyle);
+  Tuple *clock_style = dict_find(itr, MESSAGE_KEY_ClockStyle);
+  Tuple *display_background = dict_find(itr, MESSAGE_KEY_DisplayBackground);
+  Tuple *numerals_style = dict_find(itr, MESSAGE_KEY_NumeralsStyle);
+
+  if (background_style) {
+    cly_settings.BackgroundStyle = background_style->value->int32;
+  }
+  if (clock_style) {
+    cly_settings.ClockStyle = clock_style->value->int32 == 1;
+  }
+  if (display_background) {
+    cly_settings.DisplayBackground = display_background->value->int32 == 1;
+  }
+  if (numerals_style) {
+    cly_settings.NumeralsStyle = numerals_style->value->int32;
+  }
+  if (background_style || clock_style || display_background || numerals_style) {
+    clay_save_settings();
+    populate_watchface_settings_from_clay_settings();
+    layer_mark_dirty(dot_matrix_layer);
+  }
+}
+
 void draw_dot(GContext *ctx, GPoint p, int r, int r2, GColor col, int shape) {
   graphics_context_set_fill_color(ctx, col);
   graphics_context_set_stroke_color(ctx, col);
   if (shape == SQUARE) {
-    graphics_fill_rect(ctx, GRect(p.x-r+1, p.y-r+1, 2*r, 2*r), 0, GCornerNone);
     if (r2) {
       for (int i = r2; i <= r; i++) {
         graphics_draw_rect(ctx, GRect(p.x-i+1, p.y-i+1, 2*i, 2*i));
@@ -123,13 +202,19 @@ void draw_grid(Layer *layer, GContext *ctx, int r, int d) {
   GPoint center = GPoint(layer_size.w/2, layer_size.h/2);
 
   for (int i = 0; i*d + center.x < layer_size.w + r; i++) {
+    if (i % SETTINGS.grid_interval)
+      continue;
     for (int j = 0; j*d + center.y < layer_size.h + r; j++) {
+      if (j % SETTINGS.grid_interval)
+        continue;
       draw_dot(ctx, GPoint(center.x + d*i, center.y + d*j), r, SETTINGS.grid_setting.r2, SETTINGS.grid_setting.color, SETTINGS.grid_setting.shape);
       if (j)
         draw_dot(ctx, GPoint(center.x + d*i, center.y - d*j), r, SETTINGS.grid_setting.r2, SETTINGS.grid_setting.color, SETTINGS.grid_setting.shape);
     }
     if (i) {
       for (int j = 0; j*d + center.y < layer_size.h + r; j++) {
+        if (j % SETTINGS.grid_interval)
+          continue;
         draw_dot(ctx, GPoint(center.x - d*i, center.y + d*j), r, SETTINGS.grid_setting.r2, SETTINGS.grid_setting.color, SETTINGS.grid_setting.shape);
         if (j)
           draw_dot(ctx, GPoint(center.x - d*i, center.y - d*j), r, SETTINGS.grid_setting.r2, SETTINGS.grid_setting.color, SETTINGS.grid_setting.shape);
@@ -205,6 +290,7 @@ void window_load(Window *window) {
 
   layer_add_child(window_layer, dot_matrix_layer);
 
+  populate_watchface_settings_from_clay_settings();
   refresh_time();
   layer_mark_dirty(dot_matrix_layer);
 }
@@ -215,6 +301,7 @@ void window_unload(Window *window) {
 }
 
 void init() {
+  clay_load_settings();
   main_window = window_create();
   window_set_background_color(main_window, SETTINGS.background);
 
@@ -229,6 +316,10 @@ void init() {
 
   // register the tick function
   tick_timer_service_subscribe(MINUTE_UNIT, tick);
+
+  // set up inbox callback for reading watchface settings
+  app_message_register_inbox_received(inbox_recieve_callback);
+  app_message_open(128, 128);
 }
 
 void deinit() {

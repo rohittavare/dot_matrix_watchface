@@ -1,0 +1,92 @@
+[
+    {
+        "type": "heading",
+        "defaultValue": "Watchface Settings"
+    },
+    {
+    "type": "text",
+    "defaultValue": "Customize your watchface appearance and preferences."
+    },
+    {
+        "type": "section",
+        "items": [
+            {
+                "type": "heading",
+                "defaultValue": "Clock"
+            },
+            {
+                "type": "toggle",
+                "messageKey": "ClockStyle",
+                "label": "Show inline clock",
+                "defaultValue": false
+            },
+            {
+                "type": "select",
+                "messageKey": "NumeralsStyle",
+                "label": "Numerals style",
+                "defaultValue": "circle",
+                "options": [
+                    {
+                        "label": "Circle",
+                        "value": 0
+                    },
+                    {
+                        "label": "Circle (outline)",
+                        "value": 4
+                    },
+                    {
+                        "label": "Dot",
+                        "value": 6
+                    },
+                    {
+                        "label": "Square",
+                        "value": 1
+                    },
+                    {
+                        "label": "Square (outline)",
+                        "value": 5
+                    },
+                    {
+                        "label": "Line",
+                        "value": 3
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "section",
+        "items": [
+            {
+                "type": "heading",
+                "defaultValue": "Background"
+            },
+            {
+                "type": "toggle",
+                "messageKey": "DisplayBackground",
+                "label": "Show background pattern",
+                "defaultValue": true
+            },
+            {
+                "type": "select",
+                "messageKey": "BackgroundStyle",
+                "label": "Background pattern style",
+                "defaultValue": "plus",
+                "options": [
+                    {
+                        "label": "crosshairs",
+                        "value": 2
+                    },
+                    {
+                        "label": "dots",
+                        "value": 6
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "submit",
+        "defaultValue": "Save Settings"
+    }
+]
