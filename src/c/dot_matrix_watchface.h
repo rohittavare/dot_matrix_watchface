@@ -1,5 +1,17 @@
 #include <pebble.h>
 
+// constants
+// to indicate shapes
+typedef enum Shape {
+  CIRCLE,
+  SQUARE,
+  PLUS,
+  LINE,
+  CIRCLE_OUTLINE,
+  SQUARE_OUTLINE,
+  DOT
+} Shape;
+
 // structs
 
 #define SETTINGS_KEY 1
@@ -8,15 +20,15 @@
 struct ClaySettings {
   bool ClockStyle;
   bool DisplayBackground;
-  int BackgroundStyle;
-  int NumeralsStyle;
+  Shape BackgroundStyle;
+  Shape NumeralsStyle;
 };
 // ==========
 
 struct DotSetting {
   int r1;
   int r2;
-  int shape;
+  Shape shape;
   GColor color;
 };
 
@@ -54,16 +66,6 @@ struct WatchFaceSetting {
   bool display_grid;
   struct DotSetting grid_setting;
 };
-
-// constants
-// to indicate shapes
-const int CIRCLE = 0;
-const int SQUARE = 1;
-const int PLUS = 2;
-const int LINE = 3;
-const int CIRCLE_OUTLINE = 4;
-const int SQUARE_OUTLINE = 5;
-const int DOT = 6;
 
 // Represents bitmasks for each numeral
 //
