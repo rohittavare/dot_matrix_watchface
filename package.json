@@ -10,8 +10,7 @@
   "private": true,
   "dependencies": {
     "@rebble/clay": "^1.0.10",
-    "clay": "^2.24.1",
-    "pebble-clay": "^1.0.4"
+    "clay": "^2.24.1"
   },
   "pebble": {
     "capabilities": [
